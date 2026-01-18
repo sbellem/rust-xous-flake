@@ -1,8 +1,14 @@
-name: "Publish every Git push to main to FlakeHub"
+name: "Publish tags to FlakeHub"
 on:
   push:
-    branches:
-      - "main"
+    tags:
+      - "v?[0-9]+.[0-9]+.[0-9]+*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The existing tag to publish to FlakeHub"
+        type: "string"
+        required: true
 jobs:
   flakehub-publish:
     runs-on: "ubuntu-latest"
@@ -13,10 +19,11 @@ jobs:
       - uses: "actions/checkout@v5"
         with:
           persist-credentials: false
+          ref: "${{ (inputs.tag != null) && format('refs/tags/{0}', inputs.tag) || '' }}"
       - uses: "DeterminateSystems/determinate-nix-action@v3"
       - uses: "DeterminateSystems/flakehub-push@main"
         with:
-          name: "gluonix/rust-xous-flake"
-          rolling: true
           visibility: "public"
+          name: "gluonix/rust-xous-flake"
+          tag: "${{ inputs.tag }}"
           include-output-paths: true
