@@ -24,6 +24,6 @@ jobs:
       - uses: "DeterminateSystems/flakehub-push@main"
         with:
           visibility: "public"
-          name: "sbellem/rust-xous-flake"
+          name: "gluonix/rust-xous-flake"
           tag: "${{ inputs.tag }}"
           include-output-paths: true
