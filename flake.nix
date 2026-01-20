@@ -4,6 +4,7 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.2511.905687";
     rust-overlay.url = "https://flakehub.com/f/oxalica/rust-overlay/0.1.2040";
+    crane.url = "github:ipetkov/crane/0bda7e7d005ccb5522a76d11ccfbf562b71953ca";
   };
 
   outputs =
@@ -11,6 +12,7 @@
       self,
       nixpkgs,
       rust-overlay,
+      crane,
     }:
     let
       rustVersion = "1.92.0";
@@ -43,6 +45,8 @@
             extensions = [ "rust-src" "rustfmt" "clippy" ];
           };
 
+          craneLib = (crane.mkLib pkgs).overrideToolchain baseRustToolchain;
+
           rustXousSrc = pkgs.fetchFromGitHub {
             owner = "betrusted-io";
             repo = "rust";
@@ -51,9 +55,42 @@
             fetchSubmodules = true;
           };
 
-
           # RISC-V cross compiler for building compiler-builtins
           riscvCC = pkgs.pkgsCross.riscv32-embedded.stdenv.cc;
+
+          # Vendor Cargo dependencies manually
+          cargoVendorDir = pkgs.stdenv.mkDerivation {
+            name = "xous-sysroot-cargo-vendor";
+            src = rustXousSrc;
+            nativeBuildInputs = [ baseRustToolchain pkgs.cacert ];
+
+            # Skip phases we don't need
+            dontConfigure = true;
+            dontBuild = false;
+            dontFixup = true;  # FOD cannot have store references
+
+            buildPhase = ''
+              export HOME=$PWD
+              export CARGO_HOME=$PWD/.cargo
+              mkdir -p $CARGO_HOME
+
+              # Enable nightly features - needed to parse Cargo.toml with public-dependency
+              export RUSTC_BOOTSTRAP=1
+
+              cd library
+              # Vendor dependencies (Cargo.lock already exists in the repo)
+              cargo vendor --manifest-path sysroot/Cargo.toml --locked > vendor-config
+            '';
+
+            installPhase = ''
+              mkdir -p $out
+              cp -r vendor $out/
+            '';
+
+            outputHashMode = "recursive";
+            outputHashAlgo = "sha256";
+            outputHash = "sha256-a6ZxosWbccZu4c4MDwVGXhgIf6yXWYARi1+OIVfKsuE=";
+          };
 
           # Build the Xous sysroot (libstd for riscv32imac-unknown-xous-elf)
           xousSysroot = pkgs.stdenv.mkDerivation {
@@ -77,17 +114,25 @@
             RUSTC_BOOTSTRAP = "1";
             RUSTFLAGS = "-Cforce-unwind-tables=yes -Cembed-bitcode=yes -Zforce-unstable-if-unmarked";
             __CARGO_DEFAULT_LIB_METADATA = "stablestd";
-            #CC: riscv-none-embed-gcc
-            #AR: riscv-none-embed-ar
             CC = "${riscvCC}/bin/riscv32-none-elf-gcc";
             AR = "${riscvCC}/bin/riscv32-none-elf-ar";
 
             buildPhase = ''
               runHook preBuild
-              
+
               export HOME=$PWD
               export CARGO_HOME=$PWD/.cargo
               mkdir -p $CARGO_HOME
+
+              # Configure Cargo to use vendored dependencies
+              cp -r ${cargoVendorDir}/vendor vendor
+              cat > .cargo/config.toml <<EOF
+              [source.crates-io]
+              replace-with = "vendored-sources"
+
+              [source.vendored-sources]
+              directory = "$PWD/vendor"
+              EOF
 
               # Set up cross compiler
               export RUST_COMPILER_RT_ROOT="$PWD/src/llvm-project/compiler-rt"
@@ -99,13 +144,13 @@
                 ls -la src/ || true
                 exit 1
               fi
-              
+
               cargo build \
                 --target riscv32imac-unknown-xous-elf \
                 -Zbinary-dep-depinfo \
                 --release \
                 --features "panic-unwind compiler-builtins-c compiler-builtins-mem" \
-                --manifest-path "library/sysroot/Cargo.toml" \
+                --manifest-path "library/sysroot/Cargo.toml"
 
               runHook postBuild
             '';
