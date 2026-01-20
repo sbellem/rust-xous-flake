@@ -1,0 +1,75 @@
+name: Build Rust Xous Toolchain
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build rust-xous toolchain
+    runs-on: "ubuntu-latest"
+    permissions:
+      id-token: "write"
+      contents: "read"
+
+    steps:
+      - name: Checkout sources
+        uses: "actions/checkout@v5"
+
+      - name: Install Nix
+        uses: "DeterminateSystems/determinate-nix-action@v3"
+
+      - name: Setup cache
+        uses: "cachix/cachix-action@v15"
+        with:
+          name: "rust-xous"
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: Build xous sysroot
+        run: nix build .#xousSysroot --print-build-logs --out-link result-xousSysroot
+
+      - name: Build merged sysroot
+        run: nix build .#mergedSysroot --print-build-logs --out-link result-mergedSysroot
+
+      - name: Build xous rust toolchain
+        run: nix build .#rustToolchain --print-build-logs --out-link result-rustToolchain
+
+      - name: Is xous rust toolchain Build Deterministic?
+        id: deterministic-build-check
+        continue-on-error: true
+        run: nix build --rebuild --keep-failed .#rustToolchain --print-build-logs
+
+      - name: Debug non-reproducibility
+        if: failure() && steps.deterministic-build-check.outcome == 'failure'
+        run: |
+          nix run nixpkgs#diffoscope -- \
+            /nix/store/*-rustToolchain* \
+            /nix/store/*-rustToolchain*.check || true
+
+      - name: Upload rustToolchain
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: rustToolchain
+          path: result-rustToolchain/
+          if-no-files-found: error
+
+  # Flake health checks
+  check:
+    name: Flake check
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout sources
+        uses: "actions/checkout@v5"
+
+      - name: Install Nix
+        uses: "DeterminateSystems/determinate-nix-action@v3"
+
+      - name: Run flake check
+        run: nix flake check
+
+      - name: Show flake outputs
+        run: nix flake show
