@@ -24,6 +24,7 @@ jobs:
       - uses: "DeterminateSystems/flakehub-push@main"
         with:
           name: "gluonix/rust-xous-flake"
-          rolling-minor: true
+          rolling: true
+          rolling-minor: 92
           visibility: "public"
           include-output-paths: true
