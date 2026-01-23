@@ -25,6 +25,6 @@ jobs:
         with:
           name: "gluonix/rust-xous-flake"
           rolling: true
-          rolling-minor: 92
+          rolling-minor: 93
           visibility: "public"
           include-output-paths: true
