@@ -2,8 +2,8 @@
   description = "Rust toolchain with riscv32imac-unknown-xous-elf target support";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.2511.905687";
-    rust-overlay.url = "https://flakehub.com/f/oxalica/rust-overlay/0.1.2040";
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.2511.906247";
+    rust-overlay.url = "https://flakehub.com/f/oxalica/rust-overlay/0.1.2051";
     crane.url = "github:ipetkov/crane/0bda7e7d005ccb5522a76d11ccfbf562b71953ca";
   };
 
@@ -15,7 +15,7 @@
       crane,
     }:
     let
-      rustVersion = "1.92.0";
+      rustVersion = "1.93.0";
 
       systems = [
         "x86_64-linux"
@@ -40,7 +40,7 @@
       packages = forAllSystems (
         { pkgs }:
         let
-          baseRustToolchain = pkgs.rust-bin.stable."1.92.0".default.override {
+          baseRustToolchain = pkgs.rust-bin.stable."1.93.0".default.override {
             targets = [ "riscv32imac-unknown-none-elf" ];
             extensions = [ "rust-src" "rustfmt" "clippy" ];
           };
@@ -50,8 +50,8 @@
           rustXousSrc = pkgs.fetchFromGitHub {
             owner = "betrusted-io";
             repo = "rust";
-            rev = "4973c1f393524aeb9a8b98ef5048d1e07e1ac39c";
-            sha256 = "sha256-K3GfJCh+/DTTZPCMqqF+Ux9RGQ24krHtW6sVOeUlE9Q=";
+            rev = "2ae864f7d4d42c73ab05f5e01265ea31ae81a86e";
+            sha256 = "sha256-+iLFMy78f5xgw22fHPKmTy5WQonYbsi6Ms9tWeh6uxI=";
             fetchSubmodules = true;
           };
 
@@ -89,7 +89,7 @@
 
             outputHashMode = "recursive";
             outputHashAlgo = "sha256";
-            outputHash = "sha256-a6ZxosWbccZu4c4MDwVGXhgIf6yXWYARi1+OIVfKsuE=";
+            outputHash = "sha256-dIuw+8WhEpFMGbtJk8bWdbtMDIHa/1WkeeGCQD9uuFo=";
           };
 
           # Build the Xous sysroot (libstd for riscv32imac-unknown-xous-elf)
