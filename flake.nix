@@ -2,9 +2,10 @@
   description = "Rust toolchain with riscv32imac-unknown-xous-elf target support";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.2511.906247";
-    rust-overlay.url = "https://flakehub.com/f/oxalica/rust-overlay/0.1.2051";
-    crane.url = "github:ipetkov/crane/0bda7e7d005ccb5522a76d11ccfbf562b71953ca";
+    nixpkgs.url = "github:NixOS/nixpkgs/078d69f03934859a181e81ba987c2bb033eebfc5";
+    rust-overlay.url = "github:oxalica/rust-overlay/e9bcd12156a577ac4e47d131c14dc0293cc9c8c2";
+    rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+    crane.url = "github:ipetkov/crane/0314e365877a85c9e5758f9ea77a9972afbb4c21";
   };
 
   outputs =
